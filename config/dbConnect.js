@@ -10,3 +10,5 @@ const dbConnect = async () => {
         throw new Error(err);
     }
 }
+
+module.exports = dbConnect;
