@@ -34,30 +34,43 @@ const getProduct = asyncHandler(async (req, res) => {
 const getProducts = asyncHandler(async (req, res) => {
     console.log(req.query)
     try {
-        const { sort, ...body } = req.query;
-        const excludeFields = ["page", "limit", "fields"]
-        excludeFields.map((e) => delete body[e])
-        console.log(body)
-        let queryStr = JSON.stringify(body)
+        const queryObject = { ...req.query };
+        console.log(queryObject)
+        const excludeFields = ["page", "sort", "limit", "fields"]
+        excludeFields.map((e) => delete queryObject[e])
+
+        let queryStr = JSON.stringify(queryObject)
         queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);
         console.log(queryStr)
-        const query = Product.find(JSON.parse(queryStr));
+        let query = Product.find(JSON.parse(queryStr));
+        if (req.query.sort) {
+            const sortBy = req.query.sort.split(',').join(" ")
+            query = query.sort(sortBy);
 
-        if (sort && body) {
+        } else {
+            query = query.sort('-createdAt');
+        }
 
-            const sortedProducts = await query.sort({ [sort]: -1 })
-            return res.json(sortedProducts);
+        if (req.query.fields) {
+            const fields = req.query.fields.split(',').join(' ');
+            query = query.select(fields);
+        } else {
+            query = query.select('-__v')
         }
-        else if (sort) {
-            const sortedProducts = await Product.find().sort({ [sort]: -1 })
-            return res.json(sortedProducts);
+
+        const page = req.query.page;
+        const limit = req.query.limit;
+        const skip = (page - 1) * limit;
+
+        if (req.query.page) {
+            const prodCount = await Product.countDocuments();
+            if (skip > prodCount) throw new Error("This page doesnt exist")
         }
-        else if (body) {
-            const sortedProducts = await query;
-            return res.json(sortedProducts);
-        }
-        const getAllProducts = await Product.find();
-        return res.json(getAllProducts);
+        query = query.skip(skip).limit(limit);
+
+        const product = await query;
+        return res.json(product);
+
 
     }
     catch (err) {
