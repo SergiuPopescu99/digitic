@@ -3,7 +3,8 @@ const User = require('../models/userModel')
 const asyncHandler = require('express-async-handler');
 const validateMongoDbId = require('../utils/validateMongodb');
 const { generateRefreshToken } = require('../config/refreshToken');
-const jwt = require('jsonwebtoken')
+const jwt = require('jsonwebtoken');
+const sendEmail = require('./emailCtrl');
 const createUser = asyncHandler(async (req, res) => {
     const email = req.body.email;
     console.log(email)
@@ -25,7 +26,7 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
 
     const { email, password } = req.body;
     const findUser = await User.findOne({ email: email });
-    if (findUser && findUser.isPasswordMatched(password)) {
+    if (findUser && (await findUser.isPasswordMatched(password))) {
         const refreshToken = await generateRefreshToken(findUser?._id);
         const updateUser = await User.findOneAndUpdate(findUser.id, { refreshToken: refreshToken }, { new: true })
         res.cookie('refreshToken', refreshToken, { httpOnly: true, maxAge: 72 * 60 * 60 * 1000 });
@@ -179,6 +180,47 @@ const unblockUser = asyncHandler(async (req, res) => {
 
 
 });
+const updatePassword = asyncHandler(async (req, res) => {
+    console.log(req.user)
+    const { _id } = req.user;
+    const { password } = req.body;
+    validateMongoDbId(_id);
+    const user = await User.findById(_id);
+    if (password) {
+        user.password = password;
+        const updatedPassword = await user.save();
+        return res.json(updatePassword);
+    } else {
+        return res.json(user);
+    }
 
 
-module.exports = { createUser, loginUserCtrl, getAllUsers, getSingleUser, deleteUser, updateUser, blockUser, unblockUser, handleRefreshToken, logout }
+
+
+});
+const forgotPasswordToken = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+        throw new Error("User not  found with this email!");
+
+    }
+    try {
+        const token = await user.createPasswordResetToken();
+        await user.save();
+        const resetURL = `Hi please follow this link to reset your password. The link is valid 10 minutes from now. <a href='http://localhost:5000/api/user/reset-password/${token}'>Click here </a>`
+        const data = {
+            to: email,
+            subject: "Forgot Password Link",
+            html: resetURL,
+            text: `Hello, ${user.firstname}`
+        };
+        await sendEmail(data);
+        return res.json(token);
+    }
+    catch (err) {
+        throw new Error(err);
+    }
+})
+
+module.exports = { createUser, loginUserCtrl, getAllUsers, getSingleUser, deleteUser, updateUser, blockUser, unblockUser, handleRefreshToken, logout, updatePassword, forgotPasswordToken }
