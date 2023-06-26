@@ -5,6 +5,7 @@ const dotenv = require('dotenv').config()
 const PORT = process.env.PORT || 4000;
 const authRouter = require('./routes/authRoute')
 const productRouter = require('./routes/productRoute')
+const blogRouter = require('./routes/blogRoute')
 const bodyParser = require('body-parser');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
 const cookieParser = require('cookie-parser')
@@ -16,9 +17,10 @@ app.use(bodyParser.json())
 app.use(cookieParser())
 app.use('/api/user', authRouter)
 app.use('/api/product', productRouter)
-app.use('/', (req, res) => {
-    res.send('Hello from server side!')
-})
+app.use('/api/blogs', blogRouter);
+// app.use('/', (req, res) => {
+//     res.send('Hello from server side!')
+// })
 
 
 app.use(notFound)
