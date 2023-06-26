@@ -1,7 +1,7 @@
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken')
 const asyncHandler = require('express-async-handler')
-
+const Blog = require('../models/blogModel')
 const authMiddleware = asyncHandler(async (req, res, next) => {
     let token;
     if (req?.headers?.authorization?.startsWith('Bearer')) {
@@ -35,4 +35,22 @@ const isAdmin = asyncHandler(async (req, res, next) => {
 
 
 });
-module.exports = { authMiddleware, isAdmin }; 
+const isAuthor = asyncHandler(async (req, res, next) => {
+    console.log("AUTHOR MIDDLEWEAR!")
+    const idString = String(req.user._id);
+    const { id } = req.params;
+    console.log(idString, id)
+    const blog = await Blog.findById(id);
+    console.log(blog)
+    if (!blog) {
+        throw new Error("Blog not found!")
+    }
+    if (blog.author !== idString) {
+        throw new Error("Must own the blog in order to delete!")
+    }
+    else if (req.user.role = "admin") {
+        next()
+    }
+    else throw new Error("this can be deleted only by admin / owner!")
+})
+module.exports = { authMiddleware, isAdmin, isAuthor }; 
