@@ -6,6 +6,9 @@ const PORT = process.env.PORT || 4000;
 const authRouter = require('./routes/authRoute')
 const productRouter = require('./routes/productRoute')
 const blogRouter = require('./routes/blogRoute')
+const categoryRouter = require('./routes/prodCategoryRoute')
+const blogCatRouter = require('./routes/blogCatRoute')
+const brandRouter = require('./routes/brandRoute')
 const bodyParser = require('body-parser');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
 const cookieParser = require('cookie-parser')
@@ -18,6 +21,9 @@ app.use(cookieParser())
 app.use('/api/user', authRouter)
 app.use('/api/product', productRouter)
 app.use('/api/blogs', blogRouter);
+app.use('/api/category', categoryRouter);
+app.use('/api/blog-category', blogCatRouter);
+app.use('/api/brand', brandRouter);
 // app.use('/', (req, res) => {
 //     res.send('Hello from server side!')
 // })
