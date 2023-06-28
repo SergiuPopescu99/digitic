@@ -46,7 +46,11 @@ let productSchema = new mongoose.Schema({
     }, ratings: [{
         star: Number,
         postedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
-    }]
+    }],
+    totalratings: {
+        type: Number,
+        default: 0
+    }
 
 }, { timestamps: true })
 

@@ -1,6 +1,7 @@
 const Product = require('../models/productModel');
 const asyncHandler = require('express-async-handler')
 const slugify = require('slugify');
+const User = require('../models/userModel')
 const createProduct = asyncHandler(async (req, res) => {
 
 
@@ -108,6 +109,63 @@ const deleteProduct = asyncHandler(async (req, res) => {
     }
 
 })
+const addToWishlist = asyncHandler(async (req, res) => {
 
+    const { _id } = req.user;
+    const { prodId } = req.body;
+    try {
+        const user = await User.findById(_id);
+        if (!user) { throw new Error('404 User not found!') }
+        const alreadyAdded = user.wishlist.find((id) => id.toString() === prodId)
+        if (alreadyAdded) {
 
-module.exports = { createProduct, getProduct, getProducts, updateProduct, deleteProduct };
+            let userA = await User.findByIdAndUpdate(_id, {
+                $pull: { wishlist: prodId }
+            }, { new: true })
+            return res.json(userA)
+        }
+        else {
+            let userP = await User.findByIdAndUpdate(_id, {
+                $push: { wishlist: prodId }
+            }, { new: true })
+            return res.json(userP)
+        }
+    }
+    catch (err) {
+        throw new Error(err);
+    }
+})
+
+const rating = asyncHandler(async (req, res) => {
+    const { _id } = req.user;
+    const { star, prodId } = req.body;
+    try {
+        const product = await Product.findById(prodId);
+        let alreadyRated = product.ratings.find((userId) => userId.postedBy.toString() === _id.toString())
+        if (alreadyRated) {
+            const updateRating = await Product.updateOne({
+                ratings: { $elemMatch: alreadyRated },
+            }, {
+                $set: { "ratings.$.star": star }
+            },
+                {
+                    new: true
+                })
+
+        }
+        else {
+            const rateProduct = await Product.findByIdAndUpdate(prodId, { $push: { ratings: { star: star, postedBy: _id } } }, { new: true })
+
+        }
+        const getallratings = await Product.findById(prodId);
+        const totalRating = getallratings.ratings.length;
+        let ratingsum = getallratings.ratings.map((item) => item.star).reduce((prev, curr) => prev + curr, 0)
+        let actualRating = Math.round(ratingsum / totalRating);
+        let finalProd = await Product.findByIdAndUpdate(prodId, { $set: { totalratings: actualRating } }, { new: true })
+        return res.json(finalProd);
+    }
+    catch (err) {
+        throw new Error(err);
+    }
+})
+module.exports = { createProduct, getProduct, getProducts, updateProduct, deleteProduct, addToWishlist, rating };
