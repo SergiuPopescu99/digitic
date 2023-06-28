@@ -1,7 +1,9 @@
 const Product = require('../models/productModel');
 const asyncHandler = require('express-async-handler')
 const slugify = require('slugify');
-const User = require('../models/userModel')
+const User = require('../models/userModel');
+const validateMongoDbId = require('../utils/validateMongodb');
+const cloudinaryUploadImg = require('../utils/cloudinary')
 const createProduct = asyncHandler(async (req, res) => {
 
 
@@ -138,7 +140,7 @@ const addToWishlist = asyncHandler(async (req, res) => {
 
 const rating = asyncHandler(async (req, res) => {
     const { _id } = req.user;
-    const { star, prodId } = req.body;
+    const { star, comment, prodId } = req.body;
     try {
         const product = await Product.findById(prodId);
         let alreadyRated = product.ratings.find((userId) => userId.postedBy.toString() === _id.toString())
@@ -146,7 +148,7 @@ const rating = asyncHandler(async (req, res) => {
             const updateRating = await Product.updateOne({
                 ratings: { $elemMatch: alreadyRated },
             }, {
-                $set: { "ratings.$.star": star }
+                $set: { "ratings.$.star": star, "ratings.$.comment": comment }
             },
                 {
                     new: true
@@ -154,11 +156,12 @@ const rating = asyncHandler(async (req, res) => {
 
         }
         else {
-            const rateProduct = await Product.findByIdAndUpdate(prodId, { $push: { ratings: { star: star, postedBy: _id } } }, { new: true })
+            const rateProduct = await Product.findByIdAndUpdate(prodId, { $push: { ratings: { star: star, comment: comment, postedBy: _id } } }, { new: true })
 
         }
         const getallratings = await Product.findById(prodId);
         const totalRating = getallratings.ratings.length;
+
         let ratingsum = getallratings.ratings.map((item) => item.star).reduce((prev, curr) => prev + curr, 0)
         let actualRating = Math.round(ratingsum / totalRating);
         let finalProd = await Product.findByIdAndUpdate(prodId, { $set: { totalratings: actualRating } }, { new: true })
@@ -167,5 +170,26 @@ const rating = asyncHandler(async (req, res) => {
     catch (err) {
         throw new Error(err);
     }
+
 })
-module.exports = { createProduct, getProduct, getProducts, updateProduct, deleteProduct, addToWishlist, rating };
+const uploadImages = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    validateMongoDbId(id);
+    try {
+        const uploader = (path) => { return cloudinaryUploadImg(path, "images"); }
+        const urls = [];
+        const files = req.files;
+        for (const file of files) {
+            console.log(file)
+            const { path } = file;
+            const { url } = await uploader(path);
+            urls.push(url);
+        }
+        const product = await Product.findByIdAndUpdate(id, { images: urls.map((file) => { return file }) }, { new: true })
+        return res.json(product);
+    }
+    catch (err) {
+        throw new Error(err)
+    }
+})
+module.exports = { createProduct, getProduct, getProducts, updateProduct, deleteProduct, addToWishlist, rating, uploadImages };
