@@ -3,8 +3,9 @@ const asyncHandler = require('express-async-handler')
 const slugify = require('slugify');
 const User = require('../models/userModel');
 const validateMongoDbId = require('../utils/validateMongodb');
-const cloudinaryUploadImg = require('../utils/cloudinary')
-const fs = require('fs')
+const { cloudinaryUploadImg, cloudinaryDeleteImg } = require('../utils/cloudinary')
+const fs = require('fs');
+const { url } = require('inspector');
 const createProduct = asyncHandler(async (req, res) => {
 
 
@@ -174,8 +175,7 @@ const rating = asyncHandler(async (req, res) => {
 
 })
 const uploadImages = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    validateMongoDbId(id);
+
     try {
         const uploader = (path) => { return cloudinaryUploadImg(path, "images"); }
         const urls = [];
@@ -183,15 +183,33 @@ const uploadImages = asyncHandler(async (req, res) => {
         for (const file of files) {
             console.log(file)
             const { path } = file;
-            const { url } = await uploader(path);
-            urls.push(url);
+            const newpath = await uploader(path);
+            urls.push(newpath);
             fs.unlinkSync(path)
         }
-        const product = await Product.findByIdAndUpdate(id, { images: urls.map((file) => { return file }) }, { new: true })
-        return res.json(product);
+        // const product = await Product.findByIdAndUpdate(id, { images: urls.map((file) => { return file }) }, { new: true })
+        // return res.json(product);
+        const images = urls.map((file) => {
+            return file
+        })
+        res.json(images)
     }
     catch (err) {
         throw new Error(err)
     }
 })
-module.exports = { createProduct, getProduct, getProducts, updateProduct, deleteProduct, addToWishlist, rating, uploadImages };
+const deleteImages = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    try {
+        const uploader = cloudinaryDeleteImg(id, "images");
+
+        return res.json({ message: "deleted" })
+
+    }
+
+
+    catch (err) {
+        throw new Error(err)
+    }
+})
+module.exports = { createProduct, getProduct, getProducts, updateProduct, deleteProduct, addToWishlist, rating, uploadImages, deleteImages };
